@@ -175,6 +175,7 @@ void WemosSetup::handleStatus() {
 
     if (showSuccessOnWeb) {
         sprintf(body, "Successfully connected to %s", WiFiSSID);
+        //xxx maybe you can stop the setInterval now with some added <script>. but interval is in window.parent
     } else if (showFailureOnWeb) {
         sprintf(body, "Could not connect to %s. Maybe wrong ssid or password.  <a target='_parent' href='/'>Try again</a>", WiFiSSID);
     } else if (tryingToConnect) {
@@ -302,7 +303,6 @@ bool WemosSetup::connectWiFi() {
     //startWebServer(); xxx
     return !timeout;
 }
-
 
 void WemosSetup::startWebServer() {
     wfs_debugprintln("Trying to start webserver");
