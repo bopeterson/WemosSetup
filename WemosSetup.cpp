@@ -80,6 +80,14 @@ bool WemosSetup::connected() {
     return (WiFi.status() == WL_CONNECTED);
 }
 
+void WemosSetup::mode(WiFiMode mode) {
+    //note: changing to AP or AP_STA won't work if startAP hasn't run before
+    wfs_debugprint("changing mode to ");
+    wfs_debugprintln(mode);
+    wifimode = mode;
+    WiFi.mode(wifimode);
+}
+
 void WemosSetup::startSTA(unsigned long activeTime) {
     //activeTime is how long it stays in AP mode in ms if it swithces to AP after unsuccessful connection attempt. 0 means stay forever in station mode
     
@@ -339,7 +347,11 @@ void WemosSetup::inLoop() {
     if (timeToChangeToSTA != 0 && timeToChangeToSTA < loopStart) {
         //change to station mode
         if (wifimode != WIFI_STA) {
-            delay(200);
+            
+            //xxx does not seem to be needed, might even do harm
+            //WiFi.softAPdisconnect(true);
+            //delay(300);
+            
             wifimode = WIFI_STA;
             WiFi.mode(wifimode);
             

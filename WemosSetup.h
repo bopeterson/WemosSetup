@@ -80,6 +80,7 @@ class WemosSetup {
   public:
     WemosSetup();
     void begin(WiFiMode startmode = WIFI_STA, unsigned long activeTime = 0, int led_pin = -1);
+    static void mode(WiFiMode mode);
     static void startSTA(unsigned long activeTime);
     static void startAP_STA(unsigned long activeTime);
     static bool connectWiFi();
