@@ -1,4 +1,5 @@
 /*
+
 This library lets you use a web browser to configure and connect ESP8266 to a wifi network
 It has been tested with Wemos D1 boards (www.wemos.cc), but should work
 with other ESP8266-based boards
@@ -25,7 +26,7 @@ The built in led on the wemos will signal wifi status:
 
 NOTE: the led can be active or not depending on arguments to the WemosSetup::begin-method
 
-The loop of the Arduino sketch should include the inLoop()-method:
+The loop of the Arduino sketch must include the inLoop()-method:
 
 #include "WemosSetup.h"
 WemosSetup wifisetup;
@@ -59,7 +60,7 @@ See more in example files
 
 //ssid: allow for 32 chars + null termination
 //passkey: allow for 63 chars + null termination
-//html: length of htmlstart+onload+htmlmid+body+htmlend (at the moment 98+128+4+1500+15 = 1745)
+//html: length of htmlstart+onload+htmlmid+body+htmlend (at the moment 158+128+4+1500+15 = 1745)
 //networkc: truncate if there are more networks
 //body: max length of networkch + 2 * max length of WiFiSSID + fixed part (at the moment 1024 + 2*32 +367 = 1455)
 
@@ -67,8 +68,8 @@ See more in example files
 #define WFS_MAXPASSKEYLENGTH 64
 #define WFS_MAXNETWORKCHLENGTH 1024
 
-#define WFS_MAXBODYLENGTH 1500
-#define WFS_MAXHTMLLENGTH 1745
+#define WFS_MAXBODYLENGTH 1516
+#define WFS_MAXHTMLLENGTH 1805
 #define WFS_MAXONLOADLENGTH 128
 
 #include "Arduino.h"
@@ -80,11 +81,12 @@ class WemosSetup {
     WemosSetup();
     void begin(WiFiMode startmode = WIFI_STA, unsigned long activeTime = 0, int led_pin = -1);
     static void startSTA(unsigned long activeTime);
-    static void startAP(unsigned long activeTime);
+    static void startAP_STA(unsigned long activeTime);
     static bool connectWiFi();
     void shortBlink();
     static void startWebServer();
-    void handleClient();
+    static void stopWebServer();
+    //xxx void handleClient();
     void printInfo();
     bool connected();
     void inLoop();
@@ -121,6 +123,8 @@ class WemosSetup {
 
     static const byte OFF;
     static const byte ON;
+
+
 
   private:
     

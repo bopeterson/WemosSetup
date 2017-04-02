@@ -3,6 +3,10 @@
 
 ESP8266WebServer WemosSetup::server=ESP8266WebServer(80);
 
+char ap_ssid[] = "configure";
+char ap_pass[] = "configurenow";
+
+
 bool WemosSetup::runAccessPoint=false;
 bool WemosSetup::showFailureOnWeb=false;
 bool WemosSetup::showSuccessOnWeb=false;
@@ -11,7 +15,7 @@ bool WemosSetup::accessPointStarted=false;
 bool WemosSetup::tryingToConnect=false;
 
 char WemosSetup::html[]="";
-const char WemosSetup::htmlstart[] = "<!doctype html>\r\n<html><head><meta charset='UTF-8'><title>Connect</title></head><body onload=\"";
+const char WemosSetup::htmlstart[] = "<!doctype html>\r\n<html><head><meta charset='UTF-8'><style>body {font-family:sans-serif}</style><title>Connect</title></head><body onload=\"";
 const char WemosSetup::htmlmid[] = "\">";
 const char WemosSetup::htmlend[] = "</body></html>";
 
@@ -41,10 +45,17 @@ void WemosSetup::begin(WiFiMode startmode, unsigned long activeTime, int led_pin
     activeTime = 0
     led_pin = -1
     
-    startmode can be WIFI_STA or WIFI_AP
+    startmode can be WIFI_STA or WIFI_AP_STA
+  
+    if startmode is WIFI_STA and no connection can be made, it changes to AP mode
     
-    activeTime is how long in ms it stays in AP mode before switching to STA. 0 means stay forever in access point mode if 
-    startmode is WIFI_AP or stay forever in station mode if startmode is WIFI_STA
+    activeTime is how long in ms it stays in AP mode before switching to STA. 
+  
+    activeTime = 0 means:
+    - stay in access point mode until successfull connection is made if 
+    startmode is WIFI_AP_STA
+
+    - stay forever in station mode if startmode is WIFI_STA
     
     led_pin is pin number of status led. -1 means don't use led. 
     
@@ -55,8 +66,9 @@ void WemosSetup::begin(WiFiMode startmode, unsigned long activeTime, int led_pin
     }
     ledStatus = ON;
     ledWrite(ledStatus);
-    if (startmode == WIFI_AP) {
-        startAP(activeTime);
+    
+    if (startmode == WIFI_AP_STA) {
+        startAP_STA(activeTime);
     } else if (startmode == WIFI_STA) {
         startSTA(activeTime);
     } else {
@@ -70,14 +82,12 @@ bool WemosSetup::connected() {
 
 void WemosSetup::startSTA(unsigned long activeTime) {
     //activeTime is how long it stays in AP mode in ms if it swithces to AP after unsuccessful connection attempt. 0 means stay forever in station mode
-    wfs_debugprintln("startSTA");
+    
     //start in station mode and try to connect to last known ssid
-    WiFiMode prevMode = wifimode;
     wifimode = WIFI_STA;
     WiFi.mode(wifimode);
     if (WiFi.status() != WL_CONNECTED) {
-    //if (prevMode == WIFI_AP) { //maybe change to if (WiFi.status() != WL_CONNECTED)
-        WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
+      WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
     }
     if (activeTime!=0) {
         delay(7000);
@@ -91,24 +101,29 @@ void WemosSetup::startSTA(unsigned long activeTime) {
             wfs_debugprintln(WiFi.SSID());
             ledStatus = ON;
             ledWrite(ledStatus);
-            startAP(activeTime); //start accesspoint for activeTime minutes if it could not connect
+            startAP_STA(activeTime); //start accesspoint for activeTime minutes if it could not connect
         }
     }
 }
 
-void WemosSetup::startAP(unsigned long activeTime) {
+void WemosSetup::startAP_STA(unsigned long activeTime) {
     //activeTime is how long it stays in AP mode in ms before switching to STA. 0 means stay in AP forever 
-
-    wfs_debugprintln("startAP");
+    
+    //remember old ssid and psk for STATION as they might be cleared by WiFi.disconnect() or WiFi.scanNetworks
+    WiFi.SSID().toCharArray(WiFiSSID, WFS_MAXSSIDLENGTH);
+    WiFi.psk().toCharArray(WiFiPSK, WFS_MAXPASSKEYLENGTH);
+    
     delay(500); //these delays seems to prevent occasional crashes when scanning an already running access point
-    wifimode = WIFI_AP;
+    wifimode = WIFI_AP_STA; //used to be WIFI_AP but sometimes computer lost connection when changing form WIFI_AP to WIFI_AP_STA
     WiFi.mode(wifimode);
     delay(500); //these delays seems to prevent occasional crashes when changing to access point
-
+    WiFi.disconnect(); //it should not try to connect to previous networks
+        
     networks="<option value=''>enter ssid above or select here</option>";
     wfs_debugprintln("start scan");
     int n=WiFi.scanNetworks();
     wfs_debugprintln("scanning complete");
+        
     if (n>0) {
         for (int i = 0; i < n; ++i) {
             if (networks.length()+17+WiFi.SSID(i).length()<WFS_MAXNETWORKCHLENGTH) {
@@ -128,7 +143,7 @@ void WemosSetup::startAP(unsigned long activeTime) {
         IPAddress stationip(192, 168, 4, 1);//this is the default but added manually just to be sure it doesn't change in the future
         IPAddress NMask(255, 255, 255, 0);
         WiFi.softAPConfig(stationip, stationip, NMask);    
-        WiFi.softAP("configure");
+        WiFi.softAP(ap_ssid,ap_pass);
         IPAddress apip = WiFi.softAPIP();
         wfs_debugprint("Starting access point mode with IP address ");
         wfs_debugprintln(apip);
@@ -141,11 +156,12 @@ void WemosSetup::startAP(unsigned long activeTime) {
 
     if (!webServerRunning) {
         startWebServer();
-    }
+    }    
 }
 
 void WemosSetup::handleStatus() {
     wfs_debugprintln("handleStatus");
+    
     //we have the following possibilites:
     //1) this page is called after successful connection
     //2) this page is called after failed connection
@@ -156,15 +172,17 @@ void WemosSetup::handleStatus() {
     char body[WFS_MAXBODYLENGTH];
 
     sprintf(onload,""); //not used now, keep for potential future use
+
     if (showSuccessOnWeb) {
         sprintf(body, "Successfully connected to %s", WiFiSSID);
     } else if (showFailureOnWeb) {
         sprintf(body, "Could not connect to %s. Maybe wrong ssid or password.  <a target='_parent' href='/'>Try again</a>", WiFiSSID);
     } else if (tryingToConnect) 
-        sprintf(body, "Connecting...");
+        sprintf(body, ".....");
     else {
         sprintf(body, "<script>window.parent.location.href='/';</script>");
     }
+  
     sprintf(html, "%s%s%s%s%s", htmlstart, onload, htmlmid, body, htmlend);
     server.send(200, "text/html", html);
 }
@@ -196,8 +214,8 @@ void WemosSetup::handleRoot() {
         } else {
             sprintf(WiFiPSK,"");
         }
-        sprintf(onload,"setInterval(function() {document.getElementById('status').src='status?Math.random()'},15000)");
-        sprintf(body,"<p>Connecting to %s...</p><iframe frameborder='0'  id='status' width='480' height='320' src=''></iframe>",WiFiSSID);
+        sprintf(onload,"var n=0;setInterval(function() {document.getElementById('st').src='st?r='+Math.random()},2000)");
+        sprintf(body,"<p>Connecting to %s...</p><iframe frameborder='0'  id='st' width='480' height='240' src=''></iframe>",WiFiSSID);
     }
 
     //Don't change the content on any of these variables without checking their size limits!
@@ -213,21 +231,24 @@ void WemosSetup::handleRoot() {
             wfs_debugprintln("Connection failed");
             ledStatus = ON;
             ledWrite(ledStatus);
-            startAP(0);
+            startAP_STA(0);
             showFailureOnWeb = true;
         }
     }
 }
 
 bool WemosSetup::connectWiFi() {
+    delay(400);
+    //xxx stopWebServer();
     WiFi.disconnect(); //it sometimes crashes if you don't disconnect before new connection
     delay(100);
 
     tryingToConnect = true;
     bool timeout = false;
 
-    wifimode = WIFI_AP_STA;
-    WiFi.mode(wifimode);
+    //wifimode = WIFI_AP_STA; should already be in AP_STA, but used to be AP 
+    //WiFi.mode(wifimode);
+    
     //The connection sometimes fails if the previous ssid is the same as the new ssid.
     //A temporary connection attempt to a non existing network seems to fix this.
     WiFi.begin("hopefullynonexistingssid", "");
@@ -247,12 +268,14 @@ bool WemosSetup::connectWiFi() {
         unsigned long loopStart = millis();
         if (lastCheck + period <= loopStart) {
             lastCheck = loopStart;
-            connected = (WiFi.status() == WL_CONNECTED);
             wfs_debugprint(".");
             // Blink the LED
             ledStatus = !ledStatus;
             ledWrite(ledStatus); // Write LED high/low 
-            //server.handleClient(); //99% sure this line makes it crash some times. uncomment at your own risk if you wan to handle web requests while ESP is trying to connect to network :)
+        }
+        //xxx
+        if (wifimode != WIFI_STA && webServerRunning) { 
+          server.handleClient();
         }
         delay(delayTime); //a delay is needed when connecting and doing other stuff, otherwise it will crash
 
@@ -261,54 +284,79 @@ bool WemosSetup::connectWiFi() {
             wfs_debugprint("timed out");
             timeout = true;
         }
+        connected = (WiFi.status() == WL_CONNECTED);
+        
     }
     if (!timeout) {
         timeToChangeToSTA = millis() + 2*60000; //keep ap running for 120 s after connection
     }
     wfs_debugprintln("");
     tryingToConnect=false;
+    //startWebServer(); xxx
     return !timeout;
 }
 
 
 void WemosSetup::startWebServer() {
-    wfs_debugprintln("Starting webserver");
-    server.on("/", handleRoot);
-    server.on("/status", handleStatus);
-    server.begin();
-    webServerRunning = true;  
+    wfs_debugprintln("Trying to start webserver");
+    if (!webServerRunning) {
+      wfs_debugprintln("Starting webserver");
+      server.on("/", handleRoot);
+      server.on("/st", handleStatus);
+      server.begin();
+      webServerRunning = true;
+    }
 }
 
+void WemosSetup::stopWebServer() {
+  //WARNING - crash if stopping already stopped server
+    wfs_debugprintln("Trying to stop webserver");
+    if (webServerRunning) {
+      wfs_debugprintln("Stopping webserver");
+      server.close(); //stop or close? what is the difference?      
+      webServerRunning = false;  
+    }
+  }
 
+/*
 void WemosSetup::handleClient() {
     server.handleClient(); 
 }
+*/
 
 void WemosSetup::inLoop() {
     unsigned long loopStart=millis();
     //check if it is time to change from configure mode (access point) to normal mode (station)
 
-
+    yield(); //xxx or delay(2);
     if (timeToChangeToSTA != 0 && timeToChangeToSTA < loopStart) {
+        //change to station mode
         if (wifimode != WIFI_STA) {
-            WiFiMode prevMode = wifimode;
+            delay(200);
             wifimode = WIFI_STA;
             WiFi.mode(wifimode);
-            if (prevMode == WIFI_AP) {
-                WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
+            
+            if (WiFi.status() != WL_CONNECTED) {
+                wfs_debugprintln("trying to reconnect to prev ssid");
+                if (WiFi.SSID().length() == 0) {
+                  WiFi.begin(WiFiSSID, WiFiPSK);
+                } else {
+                  WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
+                }
             }
             wfs_debugprintln("changing to STA");
         }
         timeToChangeToSTA = 0; // Zero means don't change to STA
     }
 
-    if (wifimode != WIFI_STA) {
-        //only handle web requests in access point mode
+    if (wifimode != WIFI_STA && webServerRunning) {
+        //only handle web requests in access point mode and if webserver is running
         server.handleClient();
-        delay(5);
+        delay(2);
     }
 
     if ((wifimode != WIFI_AP) && (lastCheck + checkRate <= loopStart)) {
+        //turn led on or off to indicate connection (off = connected)
         lastCheck=loopStart;
         if (WiFi.status() == WL_CONNECTED) {
             ledStatus = OFF;
@@ -320,19 +368,18 @@ void WemosSetup::inLoop() {
         shortBlink();
     }
 
-    if ((wifimode == WIFI_AP) && (lastApBlink + apBlinkRate <= loopStart)) {
+    if ((wifimode != WIFI_STA) && WiFi.status() != WL_CONNECTED && (lastApBlink + apBlinkRate <= loopStart)) {
         //blink led to indicate access point mode
         lastApBlink = loopStart;
         ledStatus = !ledStatus;
         ledWrite(ledStatus);
     }
-
 }
 
 void WemosSetup::toggleAccessPoint() {
 
     if (wifimode == WIFI_STA) {
-        startAP(0);
+        startAP_STA(0);
     } else {
         startSTA(0);
     }  
