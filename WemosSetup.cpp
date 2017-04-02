@@ -177,9 +177,16 @@ void WemosSetup::handleStatus() {
         sprintf(body, "Successfully connected to %s", WiFiSSID);
     } else if (showFailureOnWeb) {
         sprintf(body, "Could not connect to %s. Maybe wrong ssid or password.  <a target='_parent' href='/'>Try again</a>", WiFiSSID);
-    } else if (tryingToConnect) 
-        sprintf(body, ".....");
-    else {
+    } else if (tryingToConnect) {
+        //show a "progress bar" of dots
+        char n[5];
+        if (server.hasArg("n")) {
+          server.arg("n").toCharArray(n, 5);
+        } else {
+          n[0]='3';n[1]=0; //xxx not the best way, change later
+        }
+        sprintf(body,"<script>document.write(new Array(1+%s).join('.'))</script>",n);
+    } else {
         sprintf(body, "<script>window.parent.location.href='/';</script>");
     }
   
@@ -214,8 +221,8 @@ void WemosSetup::handleRoot() {
         } else {
             sprintf(WiFiPSK,"");
         }
-        sprintf(onload,"var n=0;setInterval(function() {document.getElementById('st').src='st?r='+Math.random()},2000)");
-        sprintf(body,"<p>Connecting to %s...</p><iframe frameborder='0'  id='st' width='480' height='240' src=''></iframe>",WiFiSSID);
+        sprintf(onload,"var n=0;setInterval(function() {n++;document.getElementById('st').src='st?r='+Math.random()+'&n='+n},2000)");
+        sprintf(body,"<p>Connecting to %s</p><iframe frameborder='0'  id='st' width='480' height='240' src=''></iframe>",WiFiSSID);
     }
 
     //Don't change the content on any of these variables without checking their size limits!
