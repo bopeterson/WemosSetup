@@ -12,6 +12,7 @@ bool WemosSetup::showFailureOnWeb=false;
 bool WemosSetup::showSuccessOnWeb=false;
 bool WemosSetup::webServerRunning=false;
 bool WemosSetup::accessPointStarted=false;
+bool WemosSetup::stationStarted=false;
 bool WemosSetup::tryingToConnect=false;
 
 char WemosSetup::html[]="";
@@ -82,11 +83,44 @@ bool WemosSetup::connected() {
 
 void WemosSetup::mode(WiFiMode mode) {
     //note: changing to AP or AP_STA won't work if startAP hasn't run before
+    //same might apply when changing to STA
+    
+    //xxx replace this by switch to sta and switch to ap sta
     wfs_debugprint("changing mode to ");
     wfs_debugprintln(mode);
     wifimode = mode;
     WiFi.mode(wifimode);
 }
+
+void WemosSetup::switchToSTA() {
+    // xxxxxxxx jfr m timetochangetosta vad som görs då
+    if (!stationStarted) {
+        //xxx test that this works
+        /*
+        right now it drops connection if you start in sta, switch to ap_sta and back to sta
+        hopefully fixed now
+        
+        */
+        startSTA(0);
+    } else {
+        wifimode = WIFI_STA;
+        WiFi.mode(wifimode);        
+    }
+    timeToChangeToSTA = 0;
+}
+
+void WemosSetup::switchToAP_STA() {
+    if (!accessPointStarted) {
+        //xxx make sure to keep connected. now it disconnects station
+        //hopefully fixed now
+        startAP_STA(0);
+    } else {
+        wifimode = WIFI_AP_STA;
+        WiFi.mode(wifimode);        
+    }
+    timeToChangeToSTA = 0;
+}
+
 
 void WemosSetup::startSTA(unsigned long activeTime) {
     //activeTime is how long it stays in AP mode in ms if it swithces to AP after unsuccessful connection attempt. 0 means stay forever in station mode
@@ -112,6 +146,7 @@ void WemosSetup::startSTA(unsigned long activeTime) {
             startAP_STA(activeTime); //start accesspoint for activeTime minutes if it could not connect
         }
     }
+    stationStarted = true;
 }
 
 void WemosSetup::startAP_STA(unsigned long activeTime) {
@@ -124,8 +159,8 @@ void WemosSetup::startAP_STA(unsigned long activeTime) {
     delay(500); //these delays seems to prevent occasional crashes when scanning an already running access point
     wifimode = WIFI_AP_STA; //used to be WIFI_AP but sometimes computer lost connection when changing form WIFI_AP to WIFI_AP_STA
     WiFi.mode(wifimode);
-    delay(500); //these delays seems to prevent occasional crashes when changing to access point
-    WiFi.disconnect(); //it should not try to connect to previous networks
+    delay(200); //these delays seems to prevent occasional crashes when changing to access point. Maybe not needed after updated ESP8266WiFi library
+    //WiFi.disconnect(); //it should not try to connect to previous networks. or maybe it should? xxx But what if it starts in AP_STA, and there is no wifi.begin? consequneces?
         
     networks="<option value=''>enter ssid above or select here</option>";
     wfs_debugprintln("start scan");
@@ -396,7 +431,7 @@ void WemosSetup::inLoop() {
 }
 
 void WemosSetup::toggleAccessPoint() {
-
+    //xxx this is not safe and should be changed or deleted
     if (wifimode == WIFI_STA) {
         startAP_STA(0);
     } else {
@@ -460,6 +495,8 @@ void WemosSetup::printInfo() {
     wfs_debugprintln(webServerRunning);
     wfs_debugprint(F("accessPointStarted:  "));
     wfs_debugprintln(accessPointStarted);
+    wfs_debugprint(F("stationStarted:      "));
+    wfs_debugprintln(stationStarted);
     wfs_debugprint(F("showSuccessOnWeb:    "));
     wfs_debugprintln(showSuccessOnWeb);
     wfs_debugprint(F("WiFi Status:         "));

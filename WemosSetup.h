@@ -81,6 +81,9 @@ class WemosSetup {
     WemosSetup();
     void begin(WiFiMode startmode = WIFI_STA, unsigned long activeTime = 0, int led_pin = -1);
     static void mode(WiFiMode mode);
+    static void switchToSTA();
+    static void switchToAP_STA();
+    
     static void startSTA(unsigned long activeTime);
     static void startAP_STA(unsigned long activeTime);
     static bool connectWiFi();
@@ -107,6 +110,7 @@ class WemosSetup {
     static bool showFailureOnWeb;
     static bool showSuccessOnWeb;
     static bool webServerRunning;
+    static bool stationStarted;
     static bool accessPointStarted;
     static bool tryingToConnect;
 
