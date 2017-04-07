@@ -11,7 +11,7 @@ browse to 192.168.4.1 and enter ssid and password for a new wifi network.
 - If the connection attempt is not successful, it will stay in access point mode. 
 
 A button connected to pin D6 will toggle between station mode and access point mode. This requires the
-SimpleButton library as well. 
+WemosButton library as well. 
 
 The built in led on the wemos will signal wifi status:
 
@@ -23,18 +23,17 @@ The built in led on the wemos will signal wifi status:
  */
 
 #include "WemosSetup.h"
-#include "SimpleButton.h"
+#include "WemosButton.h"
 
 WemosSetup wifisetup;
-SimpleButton d6;
+WemosButton d6;
 
 const unsigned long periodicRate = 15*1000; //do periodic task in main loop every 15 seconds
 unsigned long periodicLast = 0;
 
 void setup() {
   d6.begin(D6); //initalize the button connected to D6
-  Serial.begin(9600); //needed if WFS_DEBUG is true in WemosSetup.h
-  delay(100);
+  Serial.begin(115200); //needed if WFS_DEBUG is true in WemosSetup.h
   //start in station mode and try to connect to last ssid,
   //switch to AP mode and stay there in 120 s if it couldn't connect,
   //and use the builtin led to signal status:

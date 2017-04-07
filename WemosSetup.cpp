@@ -423,11 +423,10 @@ void WemosSetup::inLoop() {
 }
 
 void WemosSetup::toggleAccessPoint() {
-    //xxx this is not safe and should be changed or deleted
     if (wifimode == WIFI_STA) {
-        startAP_STA(0);
+        switchToAP_STA();
     } else {
-        startSTA(0);
+        switchToSTA();
     }  
 }
 
