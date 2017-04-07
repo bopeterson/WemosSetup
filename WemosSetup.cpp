@@ -32,6 +32,7 @@ const byte WemosSetup::ON = LOW;
 const byte WemosSetup::OFF = HIGH;
 
 unsigned long WemosSetup::timeToChangeToSTA = 0; //when is it time time to change to STA (station) in ms. Zero means never
+unsigned long WemosSetup::timeToChangeToSTAAfterConnection = 0;
 
 int WemosSetup::_led_pin;
 
@@ -81,26 +82,10 @@ bool WemosSetup::connected() {
     return (WiFi.status() == WL_CONNECTED);
 }
 
-void WemosSetup::mode(WiFiMode mode) {
-    //note: changing to AP or AP_STA won't work if startAP hasn't run before
-    //same might apply when changing to STA
-    
-    //xxx replace this by switch to sta and switch to ap sta
-    wfs_debugprint("changing mode to ");
-    wfs_debugprintln(mode);
-    wifimode = mode;
-    WiFi.mode(wifimode);
-}
-
 void WemosSetup::switchToSTA() {
-    // xxxxxxxx jfr m timetochangetosta vad som görs då
     if (!stationStarted) {
-        //xxx test that this works
-        /*
-        right now it drops connection if you start in sta, switch to ap_sta and back to sta
-        hopefully fixed now
-        
-        */
+        //xxx might need to read original ssid and psk here? but maybe not always?
+        //or better in startsta?
         startSTA(0);
     } else {
         wifimode = WIFI_STA;
@@ -111,8 +96,6 @@ void WemosSetup::switchToSTA() {
 
 void WemosSetup::switchToAP_STA() {
     if (!accessPointStarted) {
-        //xxx make sure to keep connected. now it disconnects station
-        //hopefully fixed now
         startAP_STA(0);
     } else {
         wifimode = WIFI_AP_STA;
@@ -129,7 +112,11 @@ void WemosSetup::startSTA(unsigned long activeTime) {
     wifimode = WIFI_STA;
     WiFi.mode(wifimode);
     if (WiFi.status() != WL_CONNECTED) {
-      WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
+        if (WiFi.SSID().length() == 0) {
+            WiFi.begin(WiFiSSID, WiFiPSK);
+        } else {
+            WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
+        }
     }
     if (activeTime!=0) {
         delay(7000);
@@ -181,6 +168,7 @@ void WemosSetup::startAP_STA(unsigned long activeTime) {
     } else {
         timeToChangeToSTA = millis()+activeTime*1000;
     }
+    timeToChangeToSTAAfterConnection = activeTime;
 
     if (!accessPointStarted) {
         IPAddress stationip(192, 168, 4, 1);//this is the default but added manually just to be sure it doesn't change in the future
@@ -208,7 +196,7 @@ void WemosSetup::handleStatus() {
     //we have the following possibilites:
     //1) this page is called after successful connection
     //2) this page is called after failed connection
-    //3) this page is called during connection-but this is usually not handled
+    //3) this page is called during connection
     //4) this page is called before connection attemp-redirect to form
 
     char onload[WFS_MAXONLOADLENGTH];
@@ -217,15 +205,14 @@ void WemosSetup::handleStatus() {
     sprintf(onload,""); //not used now, keep for potential future use
 
     if (showSuccessOnWeb) {
-        sprintf(body, "Successfully connected to %s", WiFiSSID);
-        //xxx maybe you can stop the setInterval now with some added <script>. but interval is in window.parent
+        sprintf(body, "Successfully connected to %s <script>parent.clearInterval(parent.i1)</script>", WiFiSSID);
     } else if (showFailureOnWeb) {
         sprintf(body, "Could not connect to %s. Maybe wrong ssid or password.  <a target='_parent' href='/'>Try again</a>", WiFiSSID);
     } else if (tryingToConnect) {
         //show a "progress bar" of dots
         char n[5];
         if (server.hasArg("n")) {
-          server.arg("n").toCharArray(n, 5);
+          server.arg("n").toCharArray(n,5);
         } else {
           n[0]='3';n[1]=0; //xxx not the best way, change later
         }
@@ -265,8 +252,8 @@ void WemosSetup::handleRoot() {
         } else {
             sprintf(WiFiPSK,"");
         }
-        sprintf(onload,"var n=0;setInterval(function() {n++;document.getElementById('st').src='st?r='+Math.random()+'&n='+n},2000)");
-        sprintf(body,"<p>Connecting to %s</p><iframe frameborder='0'  id='st' width='480' height='240' src=''></iframe>",WiFiSSID);
+        sprintf(onload,"var n=0;i1=setInterval(function() {n++;document.getElementById('st').src='st?r='+Math.random()+'&n='+n},2000)");
+        sprintf(body,"<script>var i1</script><p>Connecting to %s</p><iframe frameborder='0'  id='st' width='480' height='240' src=''></iframe>",WiFiSSID);
     }
 
     //Don't change the content on any of these variables without checking their size limits!
@@ -339,8 +326,13 @@ bool WemosSetup::connectWiFi() {
         
     }
     if (!timeout) {
-        timeToChangeToSTA = millis() + 2*60000; //keep ap running for 120 s after connection
+        if (timeToChangeToSTAAfterConnection==0) {
+            timeToChangeToSTA = 0;
+        } else {
+            timeToChangeToSTA = millis()+timeToChangeToSTAAfterConnection*1000;
+        }
     }
+    
     wfs_debugprintln("");
     tryingToConnect=false;
     //startWebServer(); xxx
@@ -534,6 +526,8 @@ void WemosSetup::printInfo() {
     wfs_debugprintln(F(" dBm"));
     wfs_debugprint(F("SSID:                "));
     wfs_debugprintln(WiFi.SSID());
+    wfs_debugprint(F("WiFiSSID:            "));
+    wfs_debugprintln(WiFiSSID);
     IPAddress ip = WiFi.localIP();
     wfs_debugprint(F("Station IP Address:  "));
     wfs_debugprintln(ip);

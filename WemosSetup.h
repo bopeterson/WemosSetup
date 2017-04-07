@@ -80,7 +80,7 @@ class WemosSetup {
   public:
     WemosSetup();
     void begin(WiFiMode startmode = WIFI_STA, unsigned long activeTime = 0, int led_pin = -1);
-    static void mode(WiFiMode mode);
+
     static void switchToSTA();
     static void switchToAP_STA();
     
@@ -113,6 +113,8 @@ class WemosSetup {
     static bool stationStarted;
     static bool accessPointStarted;
     static bool tryingToConnect;
+    static unsigned long timeToChangeToSTAAfterConnection;
+    
 
     static char html[WFS_MAXHTMLLENGTH];
     const static char htmlstart[];
