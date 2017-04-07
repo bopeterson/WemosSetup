@@ -4,7 +4,7 @@ This library lets you use a web browser to configure and connect ESP8266 to a wi
 It has been tested with [Wemos D1 boards](https://www.wemos.cc), but should work
 with other ESP8266-based boards.
 
-## Instalation
+## Installation
 
 Put the WiFiSetup folder and add to the Arduino/Libraries folder and include the library in your Arduino sketches with `#include "WiFiSetup.h"`. You also need to install [Arduino core for ESP8266 WiFi chip](https://github.com/esp8266/Arduino).
 
