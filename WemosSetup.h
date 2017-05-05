@@ -95,6 +95,8 @@ class WemosSetup {
     bool connected();
     void inLoop();
     void toggleAccessPoint();
+    static void sendHtml(const char *body, const char *onload);
+    
     static void handleRoot();
     static void handleStatus();
     static void ledWrite(int status);
@@ -117,6 +119,9 @@ class WemosSetup {
     
 
     static char html[WFS_MAXHTMLLENGTH];
+    static char body[WFS_MAXBODYLENGTH];
+    static char onload[WFS_MAXONLOADLENGTH];
+
     const static char htmlstart[];
     const static char htmlmid[];
     const static char htmlend[];

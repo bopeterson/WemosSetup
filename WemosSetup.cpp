@@ -16,6 +16,9 @@ bool WemosSetup::stationStarted=false;
 bool WemosSetup::tryingToConnect=false;
 
 char WemosSetup::html[]="";
+char WemosSetup::body[]="";
+char WemosSetup::onload[]="";
+
 const char WemosSetup::htmlstart[] = "<!doctype html>\r\n<html><head><meta charset='UTF-8'><style>body {font-family:sans-serif}</style><title>Connect</title></head><body onload=\"";
 const char WemosSetup::htmlmid[] = "\">";
 const char WemosSetup::htmlend[] = "</body></html>";
@@ -54,8 +57,7 @@ void WemosSetup::begin(WiFiMode startmode, unsigned long activeTime, int led_pin
     activeTime is how long in ms it stays in AP mode before switching to STA. 
   
     activeTime = 0 means:
-    - stay in access point mode until successfull connection is made if 
-    startmode is WIFI_AP_STA
+    - stay in access point forever if startmode is WIFI_AP_STA
 
     - stay forever in station mode if startmode is WIFI_STA
     
@@ -118,18 +120,18 @@ void WemosSetup::startSTA(unsigned long activeTime) {
             WiFi.begin(); //reconnectes to previous SSID and PASSKEY if it has been in AP-mode
         }
     }
-    if (activeTime!=0) {
-        delay(7000);
-        if (WiFi.status() == WL_CONNECTED) {
-            wfs_debugprint("Successfully connected to ");
-            wfs_debugprintln(WiFi.SSID());
-            ledStatus = OFF;
-            ledWrite(ledStatus);
-        } else {
-            wfs_debugprintln("!!! Could not connect to ");
-            wfs_debugprintln(WiFi.SSID());
-            ledStatus = ON;
-            ledWrite(ledStatus);
+    delay(7000);
+    if (WiFi.status() == WL_CONNECTED) {
+        wfs_debugprint("Successfully connected to ");
+        wfs_debugprintln(WiFi.SSID());
+        ledStatus = OFF;
+        ledWrite(ledStatus);
+    } else {
+        wfs_debugprintln("!!! Could not connect to ");
+        wfs_debugprintln(WiFi.SSID());
+        ledStatus = ON;
+        ledWrite(ledStatus);
+        if (activeTime!=0) {
             startAP_STA(activeTime); //start accesspoint for activeTime minutes if it could not connect
         }
     }
@@ -148,6 +150,16 @@ void WemosSetup::startAP_STA(unsigned long activeTime) {
     WiFi.mode(wifimode);
     delay(200); //these delays seems to prevent occasional crashes when changing to access point. Maybe not needed after updated ESP8266WiFi library
     //WiFi.disconnect(); //it should not try to connect to previous networks. or maybe it should? xxx But what if it starts in AP_STA, and there is no wifi.begin? consequneces?
+    
+    
+    /* xxx can not decide if it should connect to previous ssid or not....
+    WiFi.begin(WiFiSSID, WiFiPSK);
+    wfs_debugprint("trying to connected to ");
+    wfs_debugprintln(WiFi.SSID());
+    wfs_debugprint("with ");
+    wfs_debugprintln(WiFi.psk());
+    delay(4000);
+    */
         
     networks="<option value=''>enter ssid above or select here</option>";
     wfs_debugprintln("start scan");
@@ -199,12 +211,11 @@ void WemosSetup::handleStatus() {
     //3) this page is called during connection
     //4) this page is called before connection attemp-redirect to form
 
-    char onload[WFS_MAXONLOADLENGTH];
-    char body[WFS_MAXBODYLENGTH];
 
     sprintf(onload,""); //not used now, keep for potential future use
 
     if (showSuccessOnWeb) {
+        //sprintf(body, "Successfully connected to %s <script>parent.clearInterval(parent.i1)</script><script>window.parent.location.href='/test';</script>", WiFiSSID);
         sprintf(body, "Successfully connected to %s <script>parent.clearInterval(parent.i1)</script>", WiFiSSID);
     } else if (showFailureOnWeb) {
         sprintf(body, "Could not connect to %s. Maybe wrong ssid or password.  <a target='_parent' href='/'>Try again</a>", WiFiSSID);
@@ -220,16 +231,18 @@ void WemosSetup::handleStatus() {
     } else {
         sprintf(body, "<script>window.parent.location.href='/';</script>");
     }
-  
-    sprintf(html, "%s%s%s%s%s", htmlstart, onload, htmlmid, body, htmlend);
-    server.send(200, "text/html", html);
+    sendHtml(body,onload);
 }
+
+void WemosSetup::sendHtml(const char *body, const char *onload) {
+    sprintf(html, "%s%s%s%s%s", htmlstart, onload, htmlmid, body, htmlend);
+    server.send(200, "text/html", html);    
+}
+
 
 void WemosSetup::handleRoot() {
     wfs_debugprintln("handleroot");
-    char onload[WFS_MAXONLOADLENGTH];
     char networkch[WFS_MAXNETWORKCHLENGTH]; 
-    char body[WFS_MAXBODYLENGTH];
 
     sprintf(onload,"");
 
@@ -257,8 +270,7 @@ void WemosSetup::handleRoot() {
     }
 
     //Don't change the content on any of these variables without checking their size limits!
-    sprintf(html, "%s%s%s%s%s", htmlstart, onload, htmlmid, body, htmlend);
-    server.send(200, "text/html", html);
+    sendHtml(body,onload);
     if (initiateConnection) {
         if (connectWiFi()) {
             wfs_debugprintln("Connection successful");
