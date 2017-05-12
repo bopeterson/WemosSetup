@@ -96,6 +96,7 @@ class WemosSetup {
     void inLoop();
     void toggleAccessPoint();
     static void sendHtml(const char *body, const char *onload);
+    static void afterConnection(const char *url);
     
     static void handleRoot();
     static void handleStatus();
@@ -121,6 +122,8 @@ class WemosSetup {
     static char html[WFS_MAXHTMLLENGTH];
     static char body[WFS_MAXBODYLENGTH];
     static char onload[WFS_MAXONLOADLENGTH];
+    
+    static char afterConnectionUrl[32];
 
     const static char htmlstart[];
     const static char htmlmid[];

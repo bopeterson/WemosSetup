@@ -18,6 +18,7 @@ bool WemosSetup::tryingToConnect=false;
 char WemosSetup::html[]="";
 char WemosSetup::body[]="";
 char WemosSetup::onload[]="";
+char WemosSetup::afterConnectionUrl[]="";
 
 const char WemosSetup::htmlstart[] = "<!doctype html>\r\n<html><head><meta charset='UTF-8'><style>body {font-family:sans-serif}</style><title>Connect</title></head><body onload=\"";
 const char WemosSetup::htmlmid[] = "\">";
@@ -212,10 +213,13 @@ void WemosSetup::handleStatus() {
     //4) this page is called before connection attemp-redirect to form
 
 
-    sprintf(onload,""); //not used now, keep for potential future use
+    sprintf(onload,""); 
 
     if (showSuccessOnWeb) {
         //sprintf(body, "Successfully connected to %s <script>parent.clearInterval(parent.i1)</script><script>window.parent.location.href='/test';</script>", WiFiSSID);
+        if (strlen(afterConnectionUrl)>0) {
+            sprintf(onload,"setTimeout(function(){window.parent.location.href='%s'},2000)",afterConnectionUrl);
+        }
         sprintf(body, "Successfully connected to %s <script>parent.clearInterval(parent.i1)</script>", WiFiSSID);
     } else if (showFailureOnWeb) {
         sprintf(body, "Could not connect to %s. Maybe wrong ssid or password.  <a target='_parent' href='/'>Try again</a>", WiFiSSID);
@@ -225,7 +229,8 @@ void WemosSetup::handleStatus() {
         if (server.hasArg("n")) {
           server.arg("n").toCharArray(n,5);
         } else {
-          n[0]='3';n[1]=0; //xxx not the best way, change later
+          //n[0]='3';n[1]=0; //xxx not the best way, change later
+          sprintf(n,"3");
         }
         sprintf(body,"<script>document.write(new Array(1+%s).join('.'))</script>",n);
     } else {
@@ -237,6 +242,11 @@ void WemosSetup::handleStatus() {
 void WemosSetup::sendHtml(const char *body, const char *onload) {
     sprintf(html, "%s%s%s%s%s", htmlstart, onload, htmlmid, body, htmlend);
     server.send(200, "text/html", html);    
+}
+
+void WemosSetup::afterConnection(const char *url) {
+    //webpage to redirect to after a new wifi network has been chosen
+    sprintf(afterConnectionUrl,url);
 }
 
 
@@ -363,7 +373,7 @@ void WemosSetup::startWebServer() {
 }
 
 void WemosSetup::stopWebServer() {
-  //WARNING - crash if stopping already stopped server
+  //WARNING - maybe crash if stopping already stopped server
     wfs_debugprintln("Trying to stop webserver");
     if (webServerRunning) {
       wfs_debugprintln("Stopping webserver");
