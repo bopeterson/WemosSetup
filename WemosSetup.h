@@ -99,7 +99,7 @@ class WemosSetup {
     static void afterConnection(const char *url);
     
     static void handleRoot();
-    static void handleStatus();
+    static void handleFrm();
     static void ledWrite(int status);
 
     static ESP8266WebServer server;

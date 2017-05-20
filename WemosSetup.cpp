@@ -203,8 +203,9 @@ void WemosSetup::startAP_STA(unsigned long activeTime) {
     }    
 }
 
-void WemosSetup::handleStatus() {
-    wfs_debugprintln("handleStatus");
+void WemosSetup::handleFrm() {
+    //this page is shown as an iframe in root
+    wfs_debugprintln("handleFrm");
     
     //we have the following possibilites:
     //1) this page is called after successful connection
@@ -275,8 +276,8 @@ void WemosSetup::handleRoot() {
         } else {
             sprintf(WiFiPSK,"");
         }
-        sprintf(onload,"var n=0;i1=setInterval(function() {n++;document.getElementById('st').src='st?r='+Math.random()+'&n='+n},2000)");
-        sprintf(body,"<script>var i1</script><p>Connecting to %s</p><iframe frameborder='0'  id='st' width='480' height='240' src=''></iframe>",WiFiSSID);
+        sprintf(onload,"var n=0;i1=setInterval(function() {n++;document.getElementById('frm').src='frm?r='+Math.random()+'&n='+n},2000)");
+        sprintf(body,"<script>var i1</script><p>Connecting to %s</p><iframe frameborder='0'  id='frm' width='480' height='240' src=''></iframe>",WiFiSSID);
     }
 
     //Don't change the content on any of these variables without checking their size limits!
@@ -366,7 +367,7 @@ void WemosSetup::startWebServer() {
     if (!webServerRunning) {
       wfs_debugprintln("Starting webserver");
       server.on("/", handleRoot);
-      server.on("/st", handleStatus);
+      server.on("/frm", handleFrm);
       server.begin();
       webServerRunning = true;
     }
