@@ -140,7 +140,7 @@ void WemosSetup::startSTA(unsigned long activeTime) {
 }
 
 void WemosSetup::startAP_STA(unsigned long activeTime) {
-    //activeTime is how long it stays in AP mode in ms before switching to STA. 0 means stay in AP forever 
+    //activeTime is how long it stays in AP_STA mode in ms before switching to STA. 0 means stay in AP forever 
     
     //remember old ssid and psk for STATION as they might be cleared by WiFi.disconnect() or WiFi.scanNetworks
     WiFi.SSID().toCharArray(WiFiSSID, WFS_MAXSSIDLENGTH);
@@ -230,7 +230,6 @@ void WemosSetup::handleFrm() {
         if (server.hasArg("n")) {
           server.arg("n").toCharArray(n,5);
         } else {
-          //n[0]='3';n[1]=0; //xxx not the best way, change later
           sprintf(n,"3");
         }
         sprintf(body,"<script>document.write(new Array(1+%s).join('.'))</script>",n);
@@ -261,10 +260,10 @@ void WemosSetup::handleRoot() {
     if (!server.hasArg("ssid") && WiFi.status() != WL_CONNECTED) {
         networks.toCharArray(networkch,WFS_MAXNETWORKCHLENGTH);
         //note that html element arguments may be double qouted, single quoted or unquoted. Unquoted is usually not recommended but used here to save memory
-        sprintf(body, "<p>Not connected</p><form method=post action='/'><input type=text name=ssid value='%s' size=32 id=s1 onchange='document.getElementById(\"s2\").value=this.value'> SSID (network name)<br><select name=s2 id=s2 onchange='document.getElementById(\"s1\").value=this.value'>%s</select><br><input type=password name=pass size=32> PASSWORD<br><input type=submit value=connect></form>", WiFiSSID,networkch);
+        sprintf(body, "<h2>Wifi connection</h2><p>Not connected</p><form method=post action='/'><input type=text name=ssid value='%s' size=32 id=s1 onchange='document.getElementById(\"s2\").value=this.value'> SSID (network name)<br><select name=s2 id=s2 onchange='document.getElementById(\"s1\").value=this.value'>%s</select><br><input type=password name=pass size=32> PASSWORD<br><input type=submit value=connect></form>", WiFiSSID,networkch);
     } else if (!server.hasArg("ssid")) {
         networks.toCharArray(networkch,WFS_MAXNETWORKCHLENGTH);
-        sprintf(body,"<p>Connected to %s</p><form method=post action='/'><input type=text name=ssid value='%s' size=32 id=s1 onchange='document.getElementById(\"s2\").value=this.value'> SSID (network name)<br><select name=s2 id=s2 onchange='document.getElementById(\"s1\").value=this.value'>%s</select><br><input type=password name=pass size=32> PASSWORD<br><input type=submit value=connect></form>",WiFiSSID,WiFiSSID,networkch);
+        sprintf(body,"<h2>Wifi connection</h2><p>Connected to %s</p><form method=post action='/'><input type=text name=ssid value='%s' size=32 id=s1 onchange='document.getElementById(\"s2\").value=this.value'> SSID (network name)<br><select name=s2 id=s2 onchange='document.getElementById(\"s1\").value=this.value'>%s</select><br><input type=password name=pass size=32> PASSWORD<br><input type=submit value=connect></form>",WiFiSSID,WiFiSSID,networkch);
     } else { //server has arg ssid
         showFailureOnWeb = false;
         showSuccessOnWeb = false;
@@ -277,7 +276,7 @@ void WemosSetup::handleRoot() {
             sprintf(WiFiPSK,"");
         }
         sprintf(onload,"var n=0;i1=setInterval(function() {n++;document.getElementById('frm').src='frm?r='+Math.random()+'&n='+n},2000)");
-        sprintf(body,"<script>var i1</script><p>Connecting to %s</p><iframe frameborder='0'  id='frm' width='480' height='240' src=''></iframe>",WiFiSSID);
+        sprintf(body,"<h2>Wifi connection</h2><script>var i1</script><p>Connecting to %s</p><iframe frameborder=0 id=frm width=480 height=240 src=''></iframe>",WiFiSSID);
     }
 
     //Don't change the content on any of these variables without checking their size limits!
