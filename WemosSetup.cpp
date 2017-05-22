@@ -87,8 +87,7 @@ bool WemosSetup::connected() {
 
 void WemosSetup::switchToSTA() {
     if (!stationStarted) {
-        //xxx might need to read original ssid and psk here? but maybe not always?
-        //or better in startsta?
+        //Should original ssid and psk be read here?
         startSTA(0);
     } else {
         wifimode = WIFI_STA;
@@ -150,18 +149,8 @@ void WemosSetup::startAP_STA(unsigned long activeTime) {
     wifimode = WIFI_AP_STA; //used to be WIFI_AP but sometimes computer lost connection when changing form WIFI_AP to WIFI_AP_STA
     WiFi.mode(wifimode);
     delay(200); //these delays seems to prevent occasional crashes when changing to access point. Maybe not needed after updated ESP8266WiFi library
-    //WiFi.disconnect(); //it should not try to connect to previous networks. or maybe it should? xxx But what if it starts in AP_STA, and there is no wifi.begin? consequneces?
-    
-    
-    /* xxx can not decide if it should connect to previous ssid or not....
-    WiFi.begin(WiFiSSID, WiFiPSK);
-    wfs_debugprint("trying to connected to ");
-    wfs_debugprintln(WiFi.SSID());
-    wfs_debugprint("with ");
-    wfs_debugprintln(WiFi.psk());
-    delay(4000);
-    */
-        
+    //WiFi.disconnect(); //Should it connect to previous network? Probably the best
+
     networks="<option value=''>enter ssid above or select here</option>";
     wfs_debugprintln("start scan");
     int n=WiFi.scanNetworks();
@@ -299,7 +288,6 @@ void WemosSetup::handleRoot() {
 
 bool WemosSetup::connectWiFi() {
     delay(400);
-    //xxx stopWebServer();
     WiFi.disconnect(); //it sometimes crashes if you don't disconnect before new connection
     delay(100);
 
@@ -333,7 +321,7 @@ bool WemosSetup::connectWiFi() {
             ledStatus = !ledStatus;
             ledWrite(ledStatus); // Write LED high/low 
         }
-        //xxx
+
         if (wifimode != WIFI_STA && webServerRunning) { 
           server.handleClient();
         }
@@ -357,7 +345,6 @@ bool WemosSetup::connectWiFi() {
     
     wfs_debugprintln("");
     tryingToConnect=false;
-    //startWebServer(); xxx
     return !timeout;
 }
 
@@ -392,18 +379,14 @@ void WemosSetup::inLoop() {
     unsigned long loopStart=millis();
     //check if it is time to change from configure mode (access point) to normal mode (station)
 
-    yield(); //xxx or delay(2);
+    yield();
     if (timeToChangeToSTA != 0 && timeToChangeToSTA < loopStart) {
         //change to station mode
         if (wifimode != WIFI_STA) {
-            
-            //xxx does not seem to be needed, might even do harm
-            //WiFi.softAPdisconnect(true);
-            //delay(300);
-            
+
             wifimode = WIFI_STA;
             WiFi.mode(wifimode);
-            
+
             if (WiFi.status() != WL_CONNECTED) {
                 wfs_debugprintln("trying to reconnect to prev ssid");
                 if (WiFi.SSID().length() == 0) {
@@ -571,5 +554,3 @@ void WemosSetup::printInfo() {
     wfs_debugprintln(mac[5], HEX);
     wfs_debugprintln("");
 }
-
-

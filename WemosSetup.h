@@ -60,16 +60,16 @@ See more in example files
 
 //ssid: allow for 32 chars + null termination
 //passkey: allow for 63 chars + null termination
-//html: length of htmlstart+onload+htmlmid+body+htmlend (at the moment 158+128+4+1500+15 = 1745)
+//html: length of htmlstart+onload+htmlmid+body+htmlend (at the moment 140+128+4+1500+16 = 1788 )
 //networkc: truncate if there are more networks
-//body: max length of networkch + 2 * max length of WiFiSSID + fixed part (at the moment 1024 + 2*32 +367 = 1455)
+//body: max length of networkch + 2 * max length of WiFiSSID + fixed part (at the moment 1024 + 2*32 +391 = 1479)
 
 #define WFS_MAXSSIDLENGTH 33
 #define WFS_MAXPASSKEYLENGTH 64
 #define WFS_MAXNETWORKCHLENGTH 1024
 
-#define WFS_MAXBODYLENGTH 1516
-#define WFS_MAXHTMLLENGTH 1805
+#define WFS_MAXBODYLENGTH 1500
+#define WFS_MAXHTMLLENGTH 1800
 #define WFS_MAXONLOADLENGTH 128
 
 #include "Arduino.h"
@@ -90,7 +90,6 @@ class WemosSetup {
     void shortBlink();
     static void startWebServer();
     static void stopWebServer();
-    //xxx void handleClient();
     void printInfo();
     bool connected();
     void inLoop();
